@@ -1,0 +1,890 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🎣 Midnight Lake — Fishing & Shop</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Crimson+Text:ital,wght@0,400;0,600;1,400&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --ink:#060e1f;--water-deep:#081d3f;--water-mid:#0d3a6e;
+  --shore:#1a3a09;--accent:#00ccff;--accent2:#ffd700;
+  --green:#00cc66;--red:#ff4455;--text:#c8e8ff;--dim:rgba(160,210,255,0.5);
+  --panel:rgba(6,18,40,0.92);--border:rgba(0,200,255,0.18);
+  --gold:#ffd700;--shop-bg:#0a1a08;--shop-border:rgba(80,200,80,0.25);
+}
+html,body{width:100%;height:100%;overflow:hidden;background:var(--ink);font-family:'Space Mono',monospace;color:var(--text)}
+button{font-family:'Space Mono',monospace;cursor:pointer;border:none;outline:none}
+
+/* ══════════════ SCENES ══════════════ */
+#scene-fish,#scene-shop{position:absolute;inset:0;transition:opacity 0.5s,transform 0.5s}
+#scene-shop{opacity:0;pointer-events:none;transform:translateY(10px)}
+#scene-shop.active{opacity:1;pointer-events:all;transform:translateY(0)}
+#scene-fish.hidden{opacity:0;pointer-events:none}
+
+/* ══════════════ FISHING SCENE ══════════════ */
+#game{position:relative;width:100%;height:100%;overflow:hidden}
+#sky{position:absolute;inset:0;height:46%;background:linear-gradient(180deg,#04091a 0%,#0d2244 65%,#1a3a6b 100%)}
+.star{position:absolute;background:#fff;border-radius:50%;animation:twinkle var(--d,3s) ease-in-out infinite alternate}
+@keyframes twinkle{from{opacity:var(--o,.3)}to{opacity:var(--o2,.9)}}
+#moon{position:absolute;top:4vh;right:10vw;width:clamp(44px,6vw,80px);height:clamp(44px,6vw,80px);
+  background:radial-gradient(circle at 35% 35%,#fffbe8,#f5e6c8 60%,#d4b87a);border-radius:50%;
+  box-shadow:0 0 40px rgba(245,230,200,.35),0 0 80px rgba(245,230,200,.12)}
+#mountains{position:absolute;bottom:51%;left:0;width:100%;height:20vh;pointer-events:none}
+#shore{position:absolute;bottom:48%;left:0;width:100%;height:5.5vh;
+  background:linear-gradient(180deg,#1e3d0a,#132808);border-bottom:2px solid #2d5a10}
+#dock{position:absolute;bottom:calc(48% - 2px);left:50%;transform:translateX(-50%);
+  width:clamp(70px,11vw,130px);height:clamp(14px,2.5vh,26px);
+  background:linear-gradient(180deg,#5a3a1a,#3a2410);border-radius:3px 3px 0 0;
+  box-shadow:0 4px 12px rgba(0,0,0,.5)}
+#water{position:absolute;bottom:0;left:0;width:100%;height:52%;
+  background:linear-gradient(180deg,#0d3a6e 0%,#06142e 100%)}
+#water-surface{position:absolute;top:0;left:0;width:100%;height:40px;overflow:hidden}
+.wave{position:absolute;width:200%;height:28px;background:linear-gradient(180deg,rgba(26,92,158,.5),transparent);
+  border-radius:50%;animation:waveM var(--ws,9s) linear infinite}
+@keyframes waveM{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+#shimmer{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none}
+.shim{position:absolute;height:1px;background:linear-gradient(90deg,transparent,rgba(100,200,255,.25),transparent);
+  animation:shimA var(--ss,4s) ease-in-out infinite alternate}
+@keyframes shimA{from{transform:translateX(-8px)}to{transform:translateX(8px)}}
+.uw-fish{position:absolute;font-size:clamp(10px,1.8vw,18px);opacity:.2;pointer-events:none;
+  animation:swimBy var(--sw,13s) linear infinite}
+@keyframes swimBy{from{transform:translateX(-80px)}to{transform:translateX(calc(100vw + 80px))}}
+#line-canvas{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none}
+#fisher-wrap{position:absolute;bottom:calc(48% - 2px);left:50%;transform:translateX(-50%);z-index:10}
+#rod-svg{position:absolute;transform-origin:bottom left;z-index:11}
+#bobber{position:absolute;border-radius:50%;background:radial-gradient(circle at 35% 35%,#ff5555,#cc0000);
+  box-shadow:0 0 8px rgba(255,80,80,.7);display:none;cursor:pointer;z-index:10}
+#bobber::after{content:'';position:absolute;top:2px;left:3px;width:40%;height:35%;background:rgba(255,255,255,.45);border-radius:50%;transform:rotate(-30deg)}
+#bobber.biting{animation:dip .38s ease-in-out infinite alternate;box-shadow:0 0 18px rgba(255,80,80,1),0 0 36px rgba(255,80,80,.4)}
+@keyframes dip{from{transform:translateY(0)}to{transform:translateY(9px)}}
+#exclaim{position:absolute;display:none;z-index:20;font-size:clamp(18px,3vw,30px);
+  animation:exB .35s ease-in-out infinite alternate;pointer-events:none;
+  text-shadow:0 0 14px rgba(255,200,0,.8)}
+@keyframes exB{from{transform:translateY(0) scale(1)}to{transform:translateY(-10px) scale(1.15)}}
+.ripple{position:absolute;border-radius:50%;border:1.5px solid rgba(100,200,255,.5);pointer-events:none;animation:rip 1.2s ease-out forwards}
+@keyframes rip{0%{width:10px;height:5px;opacity:.8;margin-left:-5px;margin-top:-2.5px}100%{width:60px;height:20px;opacity:0;margin-left:-30px;margin-top:-10px}}
+.bubble{position:absolute;border-radius:50%;background:rgba(180,220,255,.4);animation:bub .9s ease-out forwards;pointer-events:none}
+@keyframes bub{0%{transform:translateY(0);opacity:.6}100%{transform:translateY(-38px);opacity:0}}
+.fish-jump{position:absolute;pointer-events:none;animation:fj .9s ease-out forwards}
+@keyframes fj{0%{transform:translateY(0) scale(1);opacity:1}50%{transform:translateY(-90px) scale(1.4) rotate(-20deg);opacity:1}100%{transform:translateY(-170px) scale(.5);opacity:0}}
+#flash{position:absolute;inset:0;background:rgba(255,255,255,.12);pointer-events:none;opacity:0;z-index:50;transition:opacity .15s}
+#msg-fish{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-family:'Cinzel',serif;
+  font-size:clamp(14px,2.5vw,28px);font-weight:600;text-align:center;pointer-events:none;opacity:0;
+  transition:opacity .4s;z-index:40;text-shadow:0 2px 16px rgba(0,0,0,.9),0 0 30px currentColor;
+  letter-spacing:2px;line-height:1.5;max-width:80vw}
+
+/* ══════════════ FISHING HUD ══════════════ */
+#hud{position:absolute;top:0;left:0;right:0;display:flex;justify-content:space-between;
+  align-items:flex-start;padding:clamp(8px,1.8vh,18px) clamp(10px,2vw,22px);pointer-events:none;z-index:30}
+.hud-block{display:flex;flex-direction:column;gap:2px}
+.hud-lbl{font-size:clamp(8px,1vw,11px);color:var(--dim);letter-spacing:2px}
+.hud-val{font-size:clamp(14px,2.5vw,26px);color:#fff;font-weight:700;letter-spacing:2px;
+  text-shadow:0 0 10px rgba(0,200,255,.5)}
+#title-badge{position:absolute;top:0;left:50%;transform:translateX(-50%);
+  padding:clamp(5px,1.2vh,12px) clamp(14px,3vw,32px);
+  background:rgba(6,14,31,.85);border-bottom:1px solid var(--border);
+  border-left:1px solid rgba(0,200,255,.1);border-right:1px solid rgba(0,200,255,.1);
+  border-radius:0 0 12px 12px;text-align:center;z-index:25}
+#title-badge h1{font-family:'Cinzel',serif;font-size:clamp(11px,1.8vw,20px);color:var(--accent);letter-spacing:3px}
+#title-badge p{font-size:clamp(7px,.9vw,10px);color:var(--dim);letter-spacing:2px;margin-top:1px}
+
+/* depth gauge */
+#depth-gauge{position:absolute;left:clamp(8px,1.4vw,18px);top:50%;transform:translateY(-50%);
+  display:flex;flex-direction:column;align-items:center;gap:5px;z-index:25}
+#depth-gauge label{font-size:clamp(7px,.8vw,9px);color:var(--dim);letter-spacing:2px}
+#depth-track{width:7px;height:clamp(70px,16vh,160px);background:rgba(0,0,0,.4);
+  border:1px solid var(--border);border-radius:4px;overflow:hidden;position:relative}
+#depth-fill{position:absolute;bottom:0;width:100%;background:linear-gradient(180deg,var(--accent),#0055aa);border-radius:4px;transition:height .5s}
+#depth-num{font-size:clamp(8px,1vw,11px);color:var(--accent);font-weight:700}
+
+/* catch log */
+#log{position:absolute;right:clamp(8px,1.4vw,18px);top:50%;transform:translateY(-50%);
+  width:clamp(95px,13vw,160px);z-index:25}
+#log h3{font-family:'Cinzel',serif;font-size:clamp(8px,.9vw,11px);color:rgba(0,200,255,.55);
+  letter-spacing:2px;margin-bottom:6px;border-bottom:1px solid var(--border);padding-bottom:3px}
+.log-e{font-size:clamp(8px,.9vw,11px);color:rgba(160,210,255,.7);padding:2px 0;
+  border-bottom:1px solid rgba(255,255,255,.04);animation:fadeSlide .4s ease}
+.log-e.fresh{color:#00f0ff}
+@keyframes fadeSlide{from{opacity:0;transform:translateX(8px)}to{opacity:1;transform:translateX(0)}}
+
+/* cast / reel button */
+#cast-btn{position:absolute;bottom:clamp(14px,3.5vh,36px);left:50%;transform:translateX(-50%);
+  padding:clamp(9px,1.8vh,15px) clamp(22px,4vw,44px);
+  background:rgba(6,14,31,.9);border:1.5px solid rgba(0,200,255,.4);border-radius:4px;
+  color:var(--accent);font-size:clamp(10px,1.4vw,14px);letter-spacing:3px;
+  transition:all .2s;z-index:30;text-shadow:0 0 10px rgba(0,200,255,.4);
+  box-shadow:0 0 20px rgba(0,200,255,.08)}
+#cast-btn:hover{background:rgba(0,200,255,.1);border-color:rgba(0,200,255,.8);color:#fff}
+#cast-btn.reel{border-color:rgba(0,255,100,.6);color:#00ff88;animation:rp .6s ease-in-out infinite alternate}
+@keyframes rp{from{box-shadow:0 0 16px rgba(0,255,100,.1)}to{box-shadow:0 0 40px rgba(0,255,100,.4)}}
+#reel-wrap{position:absolute;bottom:calc(clamp(14px,3.5vh,36px) + clamp(44px,7.5vh,68px));
+  left:50%;transform:translateX(-50%);width:clamp(130px,22vw,260px);display:none;z-index:30}
+#reel-label{font-size:clamp(8px,.9vw,10px);color:rgba(0,255,100,.7);letter-spacing:2px;text-align:center;margin-bottom:4px}
+#reel-track{height:6px;background:rgba(0,0,0,.5);border:1px solid rgba(0,255,100,.3);border-radius:3px;overflow:hidden}
+#reel-fill{height:100%;background:linear-gradient(90deg,#00aa44,#00ff88);border-radius:3px;width:0%;transition:width .1s}
+
+/* shop nav button */
+#shop-nav-btn{position:absolute;bottom:clamp(14px,3.5vh,36px);right:clamp(14px,2.5vw,28px);
+  padding:clamp(8px,1.5vh,13px) clamp(14px,2.5vw,28px);
+  background:rgba(6,14,31,.88);border:1.5px solid var(--shop-border);border-radius:4px;
+  color:#88dd88;font-size:clamp(9px,1.2vw,13px);letter-spacing:2px;z-index:30;transition:all .2s}
+#shop-nav-btn:hover{background:rgba(0,150,40,.12);border-color:rgba(80,200,80,.5);color:#aaffaa}
+#inv-count-badge{position:absolute;top:-8px;right:-8px;background:#00cc66;color:#000;
+  border-radius:50%;width:18px;height:18px;font-size:9px;display:flex;align-items:center;justify-content:center;font-weight:700}
+
+/* ══════════════ SHOP SCENE ══════════════ */
+#scene-shop{background:linear-gradient(160deg,#060f04 0%,#0a1a08 60%,#061208 100%);
+  display:flex;flex-direction:column;overflow:hidden}
+/* shop header */
+#shop-header{display:flex;align-items:center;justify-content:space-between;
+  padding:clamp(10px,2vh,20px) clamp(14px,3vw,32px);
+  border-bottom:1px solid var(--shop-border);background:rgba(0,0,0,.3);flex-shrink:0}
+#shop-header h1{font-family:'Cinzel',serif;font-size:clamp(16px,3vw,32px);color:#88dd88;
+  letter-spacing:4px;text-shadow:0 0 20px rgba(80,200,80,.3)}
+#shop-header .gold-display{display:flex;align-items:center;gap:10px;font-size:clamp(14px,2.5vw,26px);color:var(--gold);
+  font-weight:700;text-shadow:0 0 12px rgba(255,215,0,.4)}
+#back-btn{padding:clamp(7px,1.3vh,12px) clamp(12px,2vw,22px);background:rgba(0,0,0,.5);
+  border:1px solid var(--shop-border);border-radius:4px;color:#88dd88;
+  font-size:clamp(9px,1.1vw,12px);letter-spacing:2px;transition:all .2s}
+#back-btn:hover{background:rgba(80,200,80,.1);border-color:rgba(80,200,80,.4)}
+
+/* shop body */
+#shop-body{flex:1;display:grid;grid-template-columns:1fr 1fr;gap:0;overflow:hidden;min-height:0}
+
+/* inventory panel */
+#inv-panel{border-right:1px solid var(--shop-border);display:flex;flex-direction:column;overflow:hidden}
+#inv-panel h2{font-family:'Cinzel',serif;font-size:clamp(11px,1.6vw,16px);color:rgba(140,220,140,.6);
+  letter-spacing:3px;padding:clamp(8px,1.5vh,16px) clamp(12px,2vw,20px);
+  border-bottom:1px solid var(--shop-border);flex-shrink:0}
+#inv-grid{flex:1;overflow-y:auto;padding:clamp(8px,1.5vh,14px);
+  display:flex;flex-direction:column;gap:6px}
+#inv-grid::-webkit-scrollbar{width:4px}
+#inv-grid::-webkit-scrollbar-track{background:rgba(0,0,0,.2)}
+#inv-grid::-webkit-scrollbar-thumb{background:rgba(80,200,80,.2);border-radius:2px}
+.inv-slot{display:flex;align-items:center;gap:10px;padding:clamp(7px,1.2vh,12px) clamp(10px,1.5vw,16px);
+  background:rgba(0,60,20,.25);border:1px solid rgba(80,200,80,.15);border-radius:5px;
+  transition:all .2s;cursor:pointer}
+.inv-slot:hover{background:rgba(0,80,30,.4);border-color:rgba(80,200,80,.35)}
+.inv-slot.selected{background:rgba(0,100,40,.45);border-color:rgba(0,220,80,.5);
+  box-shadow:0 0 12px rgba(0,200,60,.15)}
+.inv-slot .fish-icon{font-size:clamp(18px,2.5vw,26px)}
+.inv-slot .fish-info{flex:1;min-width:0}
+.inv-slot .fish-name{font-family:'Crimson Text',serif;font-size:clamp(12px,1.6vw,17px);color:#cceedd;font-weight:600}
+.inv-slot .fish-qty{font-size:clamp(9px,1vw,12px);color:var(--dim)}
+.inv-slot .fish-price{font-size:clamp(11px,1.4vw,15px);color:var(--gold);font-weight:700;white-space:nowrap}
+.inv-empty{text-align:center;padding:40px 20px;color:var(--dim);font-size:clamp(10px,1.2vw,13px);
+  font-family:'Crimson Text',serif;font-style:italic;line-height:2}
+
+/* sell panel */
+#sell-panel{display:flex;flex-direction:column;overflow:hidden}
+#sell-panel h2{font-family:'Cinzel',serif;font-size:clamp(11px,1.6vw,16px);color:rgba(140,220,140,.6);
+  letter-spacing:3px;padding:clamp(8px,1.5vh,16px) clamp(12px,2vw,20px);
+  border-bottom:1px solid var(--shop-border);flex-shrink:0}
+#sell-area{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  padding:clamp(14px,3vh,28px);gap:clamp(10px,2vh,20px);overflow-y:auto}
+#sell-preview{text-align:center;display:flex;flex-direction:column;align-items:center;gap:10px}
+#sell-fish-emoji{font-size:clamp(36px,8vw,80px);transition:transform .3s}
+#sell-fish-name{font-family:'Cinzel',serif;font-size:clamp(14px,2.5vw,26px);color:#cceedd;letter-spacing:2px}
+#sell-fish-desc{font-family:'Crimson Text',serif;font-style:italic;font-size:clamp(11px,1.4vw,15px);color:var(--dim);max-width:280px;text-align:center;line-height:1.6}
+#sell-qty-row{display:flex;align-items:center;gap:clamp(8px,1.5vw,16px)}
+.qty-btn{width:clamp(28px,4vw,40px);height:clamp(28px,4vw,40px);background:rgba(0,60,20,.5);
+  border:1px solid var(--shop-border);border-radius:4px;color:#88dd88;
+  font-size:clamp(14px,2vw,20px);transition:all .2s}
+.qty-btn:hover{background:rgba(0,120,40,.4);border-color:rgba(80,200,80,.4)}
+#sell-qty-num{font-size:clamp(16px,3vw,32px);color:#fff;font-weight:700;min-width:40px;text-align:center}
+#sell-total{font-size:clamp(12px,2vw,20px);color:var(--gold);font-weight:700;
+  text-shadow:0 0 10px rgba(255,215,0,.3)}
+#sell-btn{padding:clamp(10px,2vh,16px) clamp(28px,5vw,56px);background:rgba(0,100,30,.5);
+  border:1.5px solid rgba(0,200,80,.4);border-radius:4px;color:#00ff88;
+  font-size:clamp(11px,1.6vw,16px);letter-spacing:3px;transition:all .25s;
+  box-shadow:0 0 20px rgba(0,200,80,.08)}
+#sell-btn:hover:not(:disabled){background:rgba(0,150,50,.6);border-color:#00ff88;
+  box-shadow:0 0 30px rgba(0,255,100,.25);color:#fff}
+#sell-btn:disabled{opacity:.35;cursor:not-allowed}
+#sell-all-btn{padding:clamp(8px,1.5vh,12px) clamp(20px,3.5vw,40px);background:rgba(120,80,0,.4);
+  border:1.5px solid rgba(200,160,0,.3);border-radius:4px;color:var(--gold);
+  font-size:clamp(9px,1.2vw,13px);letter-spacing:2px;transition:all .25s}
+#sell-all-btn:hover:not(:disabled){background:rgba(180,120,0,.4);border-color:var(--gold);
+  box-shadow:0 0 20px rgba(255,200,0,.2)}
+#sell-all-btn:disabled{opacity:.3;cursor:not-allowed}
+#sell-msg{font-family:'Crimson Text',serif;font-size:clamp(12px,1.6vw,16px);color:#00ff88;
+  opacity:0;transition:opacity .3s;text-align:center;font-style:italic;min-height:24px}
+#no-select{text-align:center;color:var(--dim);font-family:'Crimson Text',serif;font-style:italic;
+  font-size:clamp(12px,1.6vw,18px);line-height:1.8}
+
+/* shop upgrades section */
+#upgrade-section{border-top:1px solid var(--shop-border);padding:clamp(8px,1.5vh,14px) clamp(12px,2vw,20px);
+  flex-shrink:0;background:rgba(0,0,0,.2)}
+#upgrade-section h3{font-family:'Cinzel',serif;font-size:clamp(9px,1.1vw,13px);color:rgba(255,215,0,.5);
+  letter-spacing:3px;margin-bottom:8px}
+#upgrades-row{display:flex;gap:8px;flex-wrap:wrap}
+.upgrade-card{flex:1;min-width:100px;padding:clamp(6px,1vh,10px) clamp(8px,1.2vw,14px);
+  background:rgba(60,40,0,.35);border:1px solid rgba(200,160,0,.2);border-radius:5px;
+  transition:all .2s;cursor:pointer;text-align:center}
+.upgrade-card:hover:not(.maxed):not(.locked){background:rgba(100,70,0,.45);border-color:rgba(255,215,0,.4);
+  box-shadow:0 0 16px rgba(255,200,0,.1)}
+.upgrade-card.maxed{border-color:rgba(0,200,80,.3);background:rgba(0,40,15,.4)}
+.upgrade-card.locked{opacity:.4;cursor:not-allowed}
+.upgrade-card .upg-icon{font-size:clamp(14px,2vw,22px)}
+.upgrade-card .upg-name{font-size:clamp(8px,1vw,11px);color:#ddcc88;letter-spacing:1px;margin:3px 0}
+.upgrade-card .upg-cost{font-size:clamp(8px,1vw,11px);color:var(--gold)}
+.upgrade-card .upg-effect{font-size:clamp(7px,.8vw,10px);color:var(--dim);margin-top:2px;font-style:italic;font-family:'Crimson Text',serif}
+
+/* start screen */
+#start-screen{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  flex-direction:column;gap:clamp(10px,2vh,22px);z-index:60;background:rgba(4,9,18,.8);backdrop-filter:blur(3px)}
+#start-screen h1{font-family:'Cinzel',serif;font-size:clamp(24px,6vw,72px);
+  color:var(--accent);letter-spacing:5px;text-align:center;text-shadow:0 0 40px rgba(0,200,255,.4)}
+#start-screen .tagline{font-family:'Crimson Text',serif;font-style:italic;
+  font-size:clamp(12px,1.8vw,20px);color:var(--dim);letter-spacing:2px}
+.how-to{display:flex;flex-direction:column;gap:5px;border:1px solid var(--border);
+  padding:clamp(10px,2vh,18px) clamp(14px,3vw,30px);border-radius:6px;background:rgba(0,200,255,.03)}
+.how-to li{list-style:none;font-size:clamp(9px,1.1vw,12px);color:rgba(160,210,255,.6);letter-spacing:1px}
+.how-to li::before{content:'— ';color:var(--accent)}
+#start-btn{margin-top:8px;padding:clamp(12px,2.2vh,18px) clamp(36px,6vw,72px);
+  background:rgba(0,200,255,.07);border:1.5px solid rgba(0,200,255,.5);border-radius:4px;
+  color:var(--accent);font-size:clamp(11px,1.6vw,16px);letter-spacing:4px;transition:all .25s;
+  text-shadow:0 0 12px rgba(0,200,255,.4);box-shadow:0 0 30px rgba(0,200,255,.06)}
+#start-btn:hover{background:rgba(0,200,255,.14);border-color:var(--accent);
+  box-shadow:0 0 50px rgba(0,200,255,.25);color:#fff}
+
+/* toast */
+#toast{position:fixed;bottom:clamp(60px,10vh,90px);left:50%;transform:translateX(-50%);
+  padding:10px 24px;background:rgba(0,50,20,.95);border:1px solid rgba(0,200,80,.4);
+  border-radius:6px;color:#00ff88;font-size:clamp(10px,1.3vw,14px);letter-spacing:2px;
+  opacity:0;transition:opacity .3s;z-index:100;pointer-events:none;white-space:nowrap}
+#toast.show{opacity:1}
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════ FISHING SCENE ══════════════════════════════════════ -->
+<div id="scene-fish">
+<div id="game">
+  <div id="sky"></div>
+  <div id="moon"></div>
+  <svg id="mountains" viewBox="0 0 1440 200" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+    <polygon points="0,200 120,60 240,140 360,40 480,120 600,30 720,110 840,20 960,100 1080,50 1200,120 1320,70 1440,110 1440,200" fill="#0f2210" opacity=".9"/>
+    <polygon points="0,200 80,100 200,160 320,80 440,150 560,60 680,130 800,45 920,115 1040,70 1160,140 1280,85 1440,130 1440,200" fill="#132808" opacity=".65"/>
+  </svg>
+  <div id="shore"></div>
+  <div id="dock"></div>
+  <div id="water">
+    <div id="water-surface">
+      <div class="wave" style="--ws:10s;opacity:.6;top:0"></div>
+      <div class="wave" style="--ws:7s;opacity:.35;top:10px;animation-delay:-3s"></div>
+    </div>
+    <div id="shimmer"></div>
+  </div>
+  <canvas id="line-canvas"></canvas>
+
+  <!-- Fisher SVG -->
+  <div id="fisher-wrap">
+    <svg id="fisher-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 90" style="width:clamp(38px,5.5vw,66px);display:block">
+      <rect x="20" y="50" width="20" height="35" rx="2" fill="#1e3a6e"/>
+      <circle cx="30" cy="36" r="13" fill="#f5c89a"/>
+      <rect x="14" y="52" width="9" height="28" rx="3" fill="#1e3a6e"/>
+      <rect x="37" y="52" width="9" height="28" rx="3" fill="#1e3a6e"/>
+      <rect x="21" y="82" width="12" height="6" rx="2" fill="#111"/>
+      <rect x="33" y="82" width="12" height="6" rx="2" fill="#111"/>
+      <rect x="17" y="22" width="26" height="16" rx="8" fill="#c49a28"/>
+      <ellipse cx="30" cy="22" rx="15" ry="5" fill="#e0b030"/>
+      <circle cx="24" cy="38" r="2.5" fill="#333"/>
+      <circle cx="36" cy="38" r="2.5" fill="#333"/>
+    </svg>
+  </div>
+  <svg id="rod-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 8 90" style="width:clamp(5px,.8vw,9px);height:clamp(65px,11vh,105px)">
+    <defs><linearGradient id="rg" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#7a5c10"/><stop offset="100%" stop-color="#c49a28"/></linearGradient></defs>
+    <rect x="1" y="0" width="6" height="90" rx="3" fill="url(#rg)"/>
+  </svg>
+
+  <div id="bobber"></div>
+  <div id="exclaim">❗</div>
+
+  <!-- HUD -->
+  <div id="hud">
+    <div class="hud-block">
+      <div class="hud-lbl">GOLD</div>
+      <div class="hud-val" id="gold-val">🪙 0</div>
+      <div class="hud-lbl" style="margin-top:6px">CAUGHT</div>
+      <div class="hud-val" id="fish-val">0</div>
+    </div>
+    <div class="hud-block" style="align-items:flex-end">
+      <div class="hud-lbl">STATE</div>
+      <div class="hud-val" id="state-val" style="font-size:clamp(10px,1.4vw,15px)">IDLE</div>
+      <div class="hud-lbl" style="margin-top:6px">ROD</div>
+      <div class="hud-val" id="rod-level-val" style="font-size:clamp(10px,1.4vw,15px)">Lv.1</div>
+    </div>
+  </div>
+  <div id="title-badge"><h1>MIDNIGHT LAKE</h1><p>FISHING &amp; SHOP</p></div>
+  <div id="depth-gauge">
+    <label>DEPTH</label>
+    <div id="depth-track"><div id="depth-fill" style="height:0%"></div></div>
+    <div id="depth-num">0m</div>
+  </div>
+  <div id="log"><h3>CATCH LOG</h3></div>
+
+  <div id="reel-wrap"><div id="reel-label">REELING IN</div><div id="reel-track"><div id="reel-fill"></div></div></div>
+  <button id="cast-btn">🎣 &nbsp;CAST LINE</button>
+  <button id="shop-nav-btn">🏪 &nbsp;SHOP<span id="inv-count-badge">0</span></button>
+
+  <div id="msg-fish"></div>
+  <div id="flash"></div>
+
+  <!-- Start screen -->
+  <div id="start-screen">
+    <h1>MIDNIGHT LAKE</h1>
+    <p class="tagline">Fish. Sell. Upgrade. Repeat.</p>
+    <ul class="how-to">
+      <li>Cast your line and wait for a bite ❗</li>
+      <li>Click REEL IN rapidly to catch the fish</li>
+      <li>Visit the 🏪 Shop to sell your catch for gold</li>
+      <li>Buy upgrades to catch rarer & more fish</li>
+      <li>Deeper water = rarer fish = more gold</li>
+    </ul>
+    <button id="start-btn">BEGIN FISHING</button>
+  </div>
+</div><!-- /game -->
+</div><!-- /scene-fish -->
+
+<!-- ══════════════════════════════════════ SHOP SCENE ══════════════════════════════════════ -->
+<div id="scene-shop">
+  <div id="shop-header">
+    <button id="back-btn">← BACK TO LAKE</button>
+    <h1>🏪 HARBOR MARKET</h1>
+    <div class="gold-display">🪙 <span id="shop-gold-val">0</span></div>
+  </div>
+  <div id="shop-body">
+    <!-- Left: Inventory -->
+    <div id="inv-panel">
+      <h2>YOUR CATCH</h2>
+      <div id="inv-grid">
+        <div class="inv-empty">Your bag is empty.<br>Go fish something!</div>
+      </div>
+    </div>
+    <!-- Right: Sell -->
+    <div id="sell-panel">
+      <h2>SELL FISH</h2>
+      <div id="sell-area">
+        <div id="no-select">← Select a fish<br>from your inventory<br>to sell it here</div>
+        <div id="sell-preview" style="display:none">
+          <div id="sell-fish-emoji">🐟</div>
+          <div id="sell-fish-name">Fish</div>
+          <div id="sell-fish-desc"></div>
+          <div id="sell-qty-row">
+            <button class="qty-btn" id="qty-minus">−</button>
+            <div id="sell-qty-num">1</div>
+            <button class="qty-btn" id="qty-plus">+</button>
+          </div>
+          <div id="sell-total">Total: 🪙 0</div>
+          <button id="sell-btn">SELL</button>
+          <button id="sell-all-btn">SELL ALL</button>
+          <div id="sell-msg"></div>
+        </div>
+      </div>
+      <!-- Upgrades -->
+      <div id="upgrade-section">
+        <h3>UPGRADES</h3>
+        <div id="upgrades-row"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ══════════════════════ DATA ══════════════════════
+const FISH_DATA=[
+  {id:'minnow',   name:'Minnow',      emoji:'🐟',pts:8,   depth:[0,45], rarity:.50,desc:'A tiny silver fish. Common but a start.'},
+  {id:'perch',    name:'Perch',       emoji:'🐠',pts:18,  depth:[10,55],rarity:.25,desc:'Striped and feisty. Worth a fair coin.'},
+  {id:'bass',     name:'Bass',        emoji:'🐡',pts:35,  depth:[25,70],rarity:.13,desc:'A chunky fighter. Restaurants love it.'},
+  {id:'trout',    name:'Trout',       emoji:'🎣',pts:60,  depth:[40,85],rarity:.07,desc:'Prized by anglers everywhere.'},
+  {id:'catfish',  name:'Catfish',     emoji:'🦈',pts:100, depth:[65,100],rarity:.03,desc:'Lurks in the deep mud. Worth the wait.'},
+  {id:'golden',   name:'Golden Carp', emoji:'✨',pts:250, depth:[45,90],rarity:.015,desc:'Shimmering gold scales. A rare find.'},
+  {id:'koi',      name:'Legendary Koi',emoji:'🏆',pts:500,depth:[70,100],rarity:.005,desc:'Ancient and magnificent. True legend.'},
+];
+
+const UPGRADES=[
+  {id:'rod2',  name:'Steel Rod',    icon:'🎣', cost:150, effect:'Reels 30% faster',       maxLv:1, requires:null,
+    apply:()=>{G.reelSpeed=1.3}},
+  {id:'rod3',  name:'Carbon Rod',   icon:'🏹', cost:500, effect:'Reel speed ×2',          maxLv:1, requires:'rod2',
+    apply:()=>{G.reelSpeed=2.0}},
+  {id:'bait1', name:'Better Bait',  icon:'🪱', cost:80,  effect:'Fish bite 40% faster',   maxLv:1, requires:null,
+    apply:()=>{G.biteMulti=0.6}},
+  {id:'bait2', name:'Magic Bait',   icon:'🌟', cost:300, effect:'Bite speed ×2',          maxLv:1, requires:'bait1',
+    apply:()=>{G.biteMulti=0.3}},
+  {id:'depth1',name:'Sinker',       icon:'⚓', cost:120, effect:'Line sinks 50% deeper',  maxLv:1, requires:null,
+    apply:()=>{G.depthBonus=1.5}},
+  {id:'lucky', name:'Lucky Charm',  icon:'🍀', cost:400, effect:'Rare fish +50% chance',  maxLv:1, requires:null,
+    apply:()=>{G.luckyBonus=1.5}},
+];
+
+// ══════════════════════ STATE ══════════════════════
+const G={
+  gold:0, inventory:{}, totalCaught:0,
+  state:'IDLE', biteTimer:null,
+  bobberX:0, bobberY:0, currentDepth:0,
+  fishOnHook:null, reelProgress:0,
+  reelSpeed:1.0, biteMulti:1.0, depthBonus:1.0, luckyBonus:1.0,
+  ownedUpgrades:new Set(), rodLevel:1,
+  selectedFish:null, sellQty:1,
+  started:false,
+};
+
+// ══════════════════════ DOM REFS ══════════════════════
+const $=id=>document.getElementById(id);
+const game=$('game'), bobber=$('bobber'), castBtn=$('cast-btn');
+const msgFish=$('msg-fish'), goldVal=$('gold-val'), fishVal=$('fish-val');
+const stateVal=$('state-val'), reelWrap=$('reel-wrap'), reelFill=$('reel-fill');
+const depthFill=$('depth-fill'), depthNum=$('depth-num');
+const exclaim=$('exclaim'), logEl=$('log'), lineCanvas=$('line-canvas');
+const ctx=lineCanvas.getContext('2d');
+const flashEl=$('flash');
+const sceneFish=$('scene-fish'), sceneShop=$('scene-shop');
+const invGrid=$('inv-grid'), shopGoldVal=$('shop-gold-val');
+const sellPreview=$('sell-preview'), noSelect=$('no-select');
+const sellEmoji=$('sell-fish-emoji'), sellName=$('sell-fish-name'), sellDesc=$('sell-fish-desc');
+const sellQtyNum=$('sell-qty-num'), sellTotal=$('sell-total'), sellMsg=$('sell-msg');
+const rodSvg=$('rod-svg'), fisherWrap=$('fisher-wrap');
+const invBadge=$('inv-count-badge');
+const rodLevelVal=$('rod-level-val');
+
+// ══════════════════════ SETUP ══════════════════════
+function resize(){
+  lineCanvas.width=game.offsetWidth;
+  lineCanvas.height=game.offsetHeight;
+  positionCharacter();
+}
+window.addEventListener('resize',resize);
+resize();
+
+function positionCharacter(){
+  const gw=game.offsetWidth, gh=game.offsetHeight;
+  const shoreBottom=gh*0.48; // 48% from top = shore top
+  const fisherH=fisherWrap.offsetHeight||60;
+  fisherWrap.style.bottom=shoreBottom+'px';
+  fisherWrap.style.left=(gw/2)+'px';
+  fisherWrap.style.transform='translateX(-50%)';
+  const rodH=parseInt(getComputedStyle(rodSvg).height)||90;
+  rodSvg.style.position='absolute';
+  rodSvg.style.left=(gw/2+fisherH*0.18)+'px';
+  rodSvg.style.bottom=(shoreBottom+fisherH*0.55)+'px';
+  rodSvg.style.transform='rotate(-22deg)';
+}
+
+// Stars
+(()=>{const sky=$('sky');for(let i=0;i<65;i++){const s=document.createElement('div');s.className='star';const sz=Math.random()*2.5+.5,o=Math.random()*.5+.3;s.style.cssText=`width:${sz}px;height:${sz}px;top:${Math.random()*44}%;left:${Math.random()*100}%;--d:${(Math.random()*4+1).toFixed(1)}s;--o:${o.toFixed(2)};--o2:${Math.min(o+.5,1).toFixed(2)}`;sky.appendChild(s);}})();
+// Shimmer
+(()=>{const sh=$('shimmer');for(let i=0;i<9;i++){const l=document.createElement('div');l.className='shim';l.style.cssText=`top:${8+i*11}%;left:${Math.random()*60}%;width:${40+Math.random()*110}px;opacity:${.08+Math.random()*.2};--ss:${(3+Math.random()*5).toFixed(1)}s;animation-delay:${(Math.random()*4).toFixed(1)}s`;sh.appendChild(l);}})();
+// UW fish
+(()=>{const water=$('water');for(let i=0;i<5;i++){const f=document.createElement('div');f.className='uw-fish';f.textContent=['🐟','🐠','🐡'][Math.floor(Math.random()*3)];f.style.cssText=`top:${15+Math.random()*65}%;--sw:${(10+Math.random()*14).toFixed(0)}s;animation-delay:${(Math.random()*-14).toFixed(1)}s`;water.appendChild(f);}})();
+
+// ══════════════════════ ROD TIP ══════════════════════
+function getRodTip(){
+  const gw=game.offsetWidth, gh=game.offsetHeight;
+  const rodH=parseInt(getComputedStyle(rodSvg).height)||90;
+  const shoreBottom=gh*0.48;
+  const fisherH=fisherWrap.offsetHeight||60;
+  const baseX=gw/2;
+  const baseY=gh-shoreBottom-fisherH*0.55;
+  // tip is top of rod rotated -22deg
+  const angle=-22*Math.PI/180;
+  const tipX=baseX+Math.sin(-angle)*rodH*0.85;
+  const tipY=gh-shoreBottom-fisherH*0.55-Math.cos(-angle)*rodH*0.85;
+  return{x:gw/2+20, y:gh*(1-0.48)-fisherH*0.7-rodH*0.7};
+}
+
+// ══════════════════════ DRAW LINE ══════════════════════
+function drawLine(){
+  ctx.clearRect(0,0,lineCanvas.width,lineCanvas.height);
+  if(G.state==='IDLE'||!G.started)return;
+  const tip=getRodTip();
+  ctx.beginPath();
+  ctx.moveTo(tip.x,tip.y);
+  const cpx=tip.x+(G.bobberX-tip.x)*0.4;
+  const cpy=tip.y+Math.abs(G.bobberX-tip.x)*0.12;
+  ctx.quadraticCurveTo(cpx,cpy,G.bobberX+7,G.bobberY+7);
+  ctx.strokeStyle='rgba(200,220,255,.5)';
+  ctx.lineWidth=1;
+  ctx.stroke();
+}
+(function loop(){drawLine();requestAnimationFrame(loop);})();
+
+// ══════════════════════ HELPERS ══════════════════════
+function setState(s){G.state=s;stateVal.textContent=s;}
+function updateGold(){goldVal.textContent='🪙 '+G.gold;shopGoldVal.textContent=G.gold;}
+function updateBadge(){
+  const total=Object.values(G.inventory).reduce((a,v)=>a+v.qty,0);
+  invBadge.textContent=total;
+  invBadge.style.display=total>0?'flex':'none';
+}
+
+function showMsg(text,color='#fff',dur=1800){
+  msgFish.style.color=color;
+  msgFish.innerHTML=text;
+  msgFish.style.opacity=1;
+  clearTimeout(msgFish._t);
+  msgFish._t=setTimeout(()=>msgFish.style.opacity=0,dur);
+}
+
+function doFlash(){flashEl.style.opacity=1;setTimeout(()=>flashEl.style.opacity=0,180);}
+
+function addRipple(x,y){
+  const r=document.createElement('div');r.className='ripple';r.style.left=x+'px';r.style.top=y+'px';
+  game.appendChild(r);setTimeout(()=>r.remove(),1200);
+}
+function addBubble(x,y){
+  const b=document.createElement('div');const sz=3+Math.random()*5;
+  b.className='bubble';b.style.cssText=`width:${sz}px;height:${sz}px;left:${x+Math.random()*14-7}px;top:${y}px`;
+  game.appendChild(b);setTimeout(()=>b.remove(),950);
+}
+function addFishJump(x,y,fish){
+  const fj=document.createElement('div');fj.className='fish-jump';
+  fj.style.cssText=`left:${x-14}px;top:${y}px;font-size:${fish.pts>100?30:22}px`;
+  fj.textContent=fish.emoji;game.appendChild(fj);setTimeout(()=>fj.remove(),950);
+}
+
+function toast(msg){
+  const t=$('toast');t.textContent=msg;t.classList.add('show');
+  clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('show'),2200);
+}
+
+function logCatch(fish){
+  const entries=logEl.querySelectorAll('.log-e');
+  entries.forEach(e=>e.classList.remove('fresh'));
+  if(entries.length>=7)entries[0].remove();
+  const e=document.createElement('div');e.className='log-e fresh';
+  e.innerHTML=`${fish.emoji} <b>${fish.name}</b> <span style="color:var(--gold)">+${fish.pts}g</span>`;
+  logEl.appendChild(e);
+}
+
+// ══════════════════════ FISH PICKING ══════════════════════
+function pickFish(depth){
+  let pool=FISH_DATA.filter(f=>depth>=f.depth[0]&&depth<=f.depth[1]);
+  if(!pool.length)pool=[FISH_DATA[0]];
+  // Apply lucky bonus to rarer fish
+  const weighted=pool.map(f=>({...f,eff:f.rarity*(f.pts>50?G.luckyBonus:1)}));
+  const tot=weighted.reduce((a,f)=>a+f.eff,0);
+  let roll=Math.random()*tot,cum=0;
+  for(const f of weighted){cum+=f.eff;if(roll<cum)return FISH_DATA.find(fd=>fd.id===f.id);}
+  return pool[pool.length-1];
+}
+
+// ══════════════════════ FISHING CORE ══════════════════════
+function startBiteTimer(){
+  clearTimeout(G.biteTimer);
+  const base=2500+Math.random()*7000;
+  G.biteTimer=setTimeout(()=>{
+    if(G.state!=='WAITING')return;
+    G.fishOnHook=pickFish(G.currentDepth);
+    setState('BITING');
+    bobber.classList.add('biting');
+    exclaim.style.display='block';
+    exclaim.style.left=(G.bobberX-14)+'px';
+    exclaim.style.top=(G.bobberY-44)+'px';
+    showMsg('⚡ FISH ON!<br><small style="font-size:.6em;letter-spacing:3px">CLICK REEL IN!</small>','#00ff88',999999);
+    castBtn.textContent='🔄  REEL IN';
+    castBtn.className='reel';
+    reelWrap.style.display='block';
+    let dDir=1;
+    const dipI=setInterval(()=>{
+      if(G.state!=='BITING'){clearInterval(dipI);return;}
+      G.bobberY+=dDir*8;bobber.style.top=G.bobberY+'px';dDir*=-1;
+      addRipple(G.bobberX,G.bobberY+8);
+      if(Math.random()<.4)addBubble(G.bobberX,G.bobberY+12);
+      drawLine();
+    },350);
+    G.biteTimer=setTimeout(()=>{
+      if(G.state==='BITING'){
+        clearInterval(dipI);
+        bobber.classList.remove('biting');
+        exclaim.style.display='none';
+        G.fishOnHook=null;
+        setState('WAITING');
+        castBtn.textContent='⌛  WAITING...';castBtn.className='';
+        reelWrap.style.display='none';
+        showMsg('🐠 The fish got away!','#ff8844',1500);
+        startBiteTimer();
+      }
+    },5500);
+  },base*G.biteMulti);
+}
+
+function doReel(){
+  if(G.state==='BITING'){
+    clearTimeout(G.biteTimer);
+    exclaim.style.display='none';
+    bobber.classList.remove('biting');
+    setState('REELING');
+    G.reelProgress=0;
+    showMsg('','#fff',0);
+    castBtn.textContent='🔄  CLICK TO REEL!';
+  } else if(G.state==='REELING'){
+    G.reelProgress=Math.min(G.reelProgress+14*G.reelSpeed,100);
+    reelFill.style.width=G.reelProgress+'%';
+    const tip=getRodTip();
+    const dx=tip.x-G.bobberX,dy=tip.y-G.bobberY;
+    const dist=Math.sqrt(dx*dx+dy*dy);
+    if(dist>20){
+      G.bobberX+=dx*.13;G.bobberY+=dy*.13;
+      bobber.style.left=G.bobberX+'px';bobber.style.top=G.bobberY+'px';
+      G.currentDepth=Math.max(0,G.currentDepth-4);
+      depthFill.style.height=G.currentDepth+'%';
+      depthNum.textContent=Math.round(G.currentDepth)+'m';
+    }
+    drawLine();
+    if(G.reelProgress>=100){
+      const f=G.fishOnHook;
+      // Add to inventory
+      if(!G.inventory[f.id])G.inventory[f.id]={fish:f,qty:0};
+      G.inventory[f.id].qty++;
+      G.totalCaught++;
+      fishVal.textContent=G.totalCaught;
+      doFlash();logCatch(f);addFishJump(G.bobberX,G.bobberY,f);
+      showMsg(`${f.emoji}  ${f.name.toUpperCase()} CAUGHT!<br><span style="font-size:.6em;color:${f.pts>100?'#ffd700':'#88ccff'}">Sell it at the shop!</span>`,f.pts>100?'#ffd700':'#88ccff',2200);
+      updateBadge();
+      resetIdle();
+    }
+  }
+}
+
+function doCast(){
+  if(G.state!=='IDLE')return;
+  clearTimeout(G.biteTimer);
+  setState('CASTING');
+  castBtn.style.display='none';
+  reelWrap.style.display='none';
+  G.fishOnHook=null;
+  exclaim.style.display='none';
+  G.currentDepth=0;
+  depthFill.style.height='0%';depthNum.textContent='0m';
+
+  const gw=game.offsetWidth,gh=game.offsetHeight;
+  const tip=getRodTip();
+  const shoreY=gh*(1-0.48);
+  const maxSink=Math.min(gh*0.3,190)*G.depthBonus;
+  const targetX=gw/2-70+Math.random()*140;
+  const targetY=shoreY+15+Math.random()*25;
+
+  G.bobberX=tip.x;G.bobberY=tip.y;
+  bobber.style.left=G.bobberX+'px';bobber.style.top=G.bobberY+'px';
+  bobber.style.width=bobber.style.height='clamp(12px,1.8vw,18px)';
+  bobber.style.display='block';
+  bobber.classList.remove('biting');
+
+  let t=0;
+  const castI=setInterval(()=>{
+    t+=0.035;
+    G.bobberX=tip.x+(targetX-tip.x)*t;
+    G.bobberY=tip.y+Math.sin(t*Math.PI)*(-gh*.11)+(targetY-tip.y)*t;
+    bobber.style.left=G.bobberX+'px';bobber.style.top=G.bobberY+'px';
+    drawLine();
+    if(t>=1){
+      clearInterval(castI);
+      G.bobberX=targetX;G.bobberY=targetY;
+      bobber.style.left=G.bobberX+'px';bobber.style.top=G.bobberY+'px';
+      addRipple(G.bobberX,G.bobberY);
+      setState('SINKING');
+      let sunk=0;
+      const sinkI=setInterval(()=>{
+        sunk+=2.4;
+        G.bobberY=targetY+sunk;
+        bobber.style.top=G.bobberY+'px';
+        G.currentDepth=Math.round(sunk/maxSink*100);
+        depthFill.style.height=Math.min(G.currentDepth,100)+'%';
+        depthNum.textContent=Math.min(G.currentDepth,100)+'m';
+        drawLine();
+        if(sunk>=maxSink){
+          clearInterval(sinkI);
+          setState('WAITING');
+          castBtn.textContent='⌛  WAITING...';
+          castBtn.className='';
+          castBtn.style.display='block';
+          showMsg('🌊 Line in the water...','#a0d4ff',1800);
+          startBiteTimer();
+        }
+      },28);
+    }
+  },16);
+}
+
+function resetIdle(){
+  clearTimeout(G.biteTimer);
+  G.fishOnHook=null;
+  exclaim.style.display='none';
+  bobber.classList.remove('biting');
+  reelWrap.style.display='none';
+  G.reelProgress=0;
+  setState('IDLE');
+  bobber.style.display='none';
+  ctx.clearRect(0,0,lineCanvas.width,lineCanvas.height);
+  depthFill.style.height='0%';depthNum.textContent='0m';
+  castBtn.textContent='🎣  CAST LINE';
+  castBtn.className='';
+  castBtn.style.display='block';
+}
+
+// ══════════════════════ SHOP ══════════════════════
+function openShop(){
+  sceneFish.classList.add('hidden');
+  sceneShop.classList.add('active');
+  renderInventory();
+  renderUpgrades();
+  shopGoldVal.textContent=G.gold;
+  if(G.selectedFish&&!G.inventory[G.selectedFish]){G.selectedFish=null;}
+  if(G.selectedFish)selectFish(G.selectedFish);
+  else showNoSelect();
+}
+
+function closeShop(){
+  sceneShop.classList.remove('active');
+  sceneFish.classList.remove('hidden');
+}
+
+function renderInventory(){
+  invGrid.innerHTML='';
+  const items=Object.values(G.inventory).filter(v=>v.qty>0);
+  if(!items.length){
+    invGrid.innerHTML='<div class="inv-empty">Your bag is empty.<br>Go fish something!</div>';
+    return;
+  }
+  items.sort((a,b)=>b.fish.pts-a.fish.pts);
+  items.forEach(({fish,qty})=>{
+    const slot=document.createElement('div');
+    slot.className='inv-slot'+(G.selectedFish===fish.id?' selected':'');
+    slot.innerHTML=`<div class="fish-icon">${fish.emoji}</div><div class="fish-info"><div class="fish-name">${fish.name}</div><div class="fish-qty">Qty: ${qty}</div></div><div class="fish-price">🪙${fish.pts}</div>`;
+    slot.addEventListener('click',()=>selectFish(fish.id));
+    invGrid.appendChild(slot);
+  });
+}
+
+function selectFish(id){
+  G.selectedFish=id;
+  G.sellQty=1;
+  const inv=G.inventory[id];
+  if(!inv||inv.qty===0){showNoSelect();return;}
+  const fish=inv.fish;
+  noSelect.style.display='none';
+  sellPreview.style.display='flex';
+  sellEmoji.textContent=fish.emoji;
+  sellName.textContent=fish.name;
+  sellDesc.textContent=fish.desc;
+  updateSellUI();
+  renderInventory();// re-highlight
+}
+
+function updateSellUI(){
+  if(!G.selectedFish)return;
+  const inv=G.inventory[G.selectedFish];
+  if(!inv){return;}
+  G.sellQty=Math.max(1,Math.min(G.sellQty,inv.qty));
+  sellQtyNum.textContent=G.sellQty;
+  sellTotal.textContent='Total: 🪙 '+(inv.fish.pts*G.sellQty);
+  sellMsg.style.opacity=0;
+}
+
+function showNoSelect(){
+  noSelect.style.display='block';
+  sellPreview.style.display='none';
+  G.selectedFish=null;
+}
+
+function doSell(qty){
+  if(!G.selectedFish)return;
+  const inv=G.inventory[G.selectedFish];
+  if(!inv||inv.qty===0)return;
+  const n=Math.min(qty,inv.qty);
+  const earned=inv.fish.pts*n;
+  G.gold+=earned;
+  inv.qty-=n;
+  if(inv.qty<=0)delete G.inventory[G.selectedFish];
+  updateGold();
+  updateBadge();
+  sellMsg.textContent=`Sold ${n}× ${inv.fish.name} for 🪙${earned}!`;
+  sellMsg.style.opacity=1;
+  setTimeout(()=>sellMsg.style.opacity=0,1800);
+  toast(`💰 +${earned} gold!`);
+  if(!G.inventory[G.selectedFish]){
+    G.selectedFish=null;
+    showNoSelect();
+  } else {
+    G.sellQty=Math.min(G.sellQty,G.inventory[G.selectedFish].qty);
+    updateSellUI();
+  }
+  renderInventory();
+  renderUpgrades();
+  shopGoldVal.textContent=G.gold;
+}
+
+// Upgrades
+function renderUpgrades(){
+  const row=$('upgrades-row');
+  row.innerHTML='';
+  UPGRADES.forEach(upg=>{
+    const owned=G.ownedUpgrades.has(upg.id);
+    const reqMet=!upg.requires||G.ownedUpgrades.has(upg.requires);
+    const card=document.createElement('div');
+    card.className='upgrade-card'+(owned?' maxed':(!reqMet?' locked':''));
+    card.innerHTML=`<div class="upg-icon">${upg.icon}</div><div class="upg-name">${upg.name}</div>`+
+      (owned?'<div class="upg-cost" style="color:#00cc66">✓ OWNED</div>':
+       !reqMet?'<div class="upg-cost">🔒 Locked</div>':
+       `<div class="upg-cost">🪙 ${upg.cost}</div>`)+
+      `<div class="upg-effect">${upg.effect}</div>`;
+    if(!owned&&reqMet){
+      card.addEventListener('click',()=>buyUpgrade(upg));
+    }
+    row.appendChild(card);
+  });
+}
+
+function buyUpgrade(upg){
+  if(G.gold<upg.cost){toast('Not enough gold! 💸');return;}
+  G.gold-=upg.cost;
+  G.ownedUpgrades.add(upg.id);
+  upg.apply();
+  updateGold();
+  // Rod level display
+  if(upg.id==='rod2')G.rodLevel=2;
+  if(upg.id==='rod3')G.rodLevel=3;
+  rodLevelVal.textContent='Lv.'+G.rodLevel;
+  toast(`✅ ${upg.name} purchased!`);
+  renderUpgrades();
+  shopGoldVal.textContent=G.gold;
+}
+
+// ══════════════════════ EVENTS ══════════════════════
+castBtn.addEventListener('click',()=>{
+  if(G.state==='IDLE')doCast();
+  else if(G.state==='BITING'||G.state==='REELING')doReel();
+  else if(G.state==='WAITING')showMsg('Patience... wait for the bite!','#ffbb44',900);
+});
+bobber.addEventListener('click',e=>{e.stopPropagation();if(G.state==='BITING'||G.state==='REELING')doReel();});
+$('shop-nav-btn').addEventListener('click',openShop);
+$('back-btn').addEventListener('click',closeShop);
+$('qty-minus').addEventListener('click',()=>{G.sellQty=Math.max(1,G.sellQty-1);updateSellUI();});
+$('qty-plus').addEventListener('click',()=>{
+  if(!G.selectedFish)return;
+  const max=G.inventory[G.selectedFish]?.qty||1;
+  G.sellQty=Math.min(max,G.sellQty+1);updateSellUI();
+});
+$('sell-btn').addEventListener('click',()=>doSell(G.sellQty));
+$('sell-all-btn').addEventListener('click',()=>{
+  if(!G.selectedFish)return;
+  const qty=G.inventory[G.selectedFish]?.qty||0;
+  doSell(qty);
+});
+$('start-btn').addEventListener('click',()=>{
+  $('start-screen').style.display='none';
+  G.started=true;
+  updateBadge();
+  updateGold();
+});
+
+// init badge hidden
+invBadge.style.display='none';
+</script>
+</body>
+</html>

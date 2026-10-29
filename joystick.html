@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>The Simpsons Hit & Run - Mobile Joystick Mod</title>
+    <!-- Muat Library Joystick Terpopuler (NippleJS) -->
+    <script src="https://cloudflare.com"></script>
+    <style>
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #000; font-family: sans-serif; }
+        
+        /* Layar Utama Game */
+        iframe { width: 100%; height: 100%; border: none; }
+        
+        /* Area Sentuh Analog Joystick di Pojok Kiri Bawah */
+        #joystick-container { 
+            position: absolute; 
+            bottom: 40px; 
+            left: 40px; 
+            width: 150px; 
+            height: 150px; 
+            background: rgba(255, 255, 255, 0.1); 
+            border-radius: 50%; 
+            z-index: 999;
+        }
+
+        /* Tombol Aksi Kanan (Lompat & Interaksi) */
+        .action-container {
+            position: absolute;
+            bottom: 40px;
+            right: 40px;
+            display: flex;
+            gap: 20px;
+            z-index: 999;
+        }
+        .btn-action {
+            width: 70px;
+            height: 70px;
+            background: rgba(255, 255, 255, 0.25);
+            border: 2px solid #fff;
+            border-radius: 50%;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 14px;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        .btn-action:active { background: rgba(255, 255, 255, 0.6); }
+    </style>
+</head>
+<body>
+
+    <!-- Load Game Asli Lewat Cloud Player -->
+    <iframe id="game-frame" src="https://workers.dev"></iframe>
+
+    <!-- Kontrol Analog & Tombol Virtual -->
+    <div id="joystick-container"></div>
+    
+    <div class="action-container">
+        <div class="btn-action" data-key=" ">LOMPAT</div>
+        <div class="btn-action" data-key="e">AKSI</div>
+    </div>
+
+    <script>
+        const iframe = document.getElementById('game-frame');
+        let activeKeys = { w: false, a: false, s: false, d: false };
+
+        // Trik memaksa fokus browser berpindah ke dalam game saat layar disentuh
+        function focusGame() {
+            iframe.focus();
+        }
+        window.addEventListener('touchstart', focusGame);
+
+        // Fungsi menyuntikkan trigger tombol ke window dan sistem biner web
+        function triggerKey(key, type) {
+            const eventCode = `Key${key.toUpperCase()}`;
+            const e = new KeyboardEvent(type, { key: key, code: eventCode, bubbles: true });
+            
+            window.dispatchEvent(e);
+            if (iframe.contentWindow) {
+                iframe.contentWindow.postMessage({ type: 'simulated-key', keyType: type, keyCode: key }, '*');
+                iframe.contentWindow.dispatchEvent(e);
+            }
+        }
+
+        // Membuat Analog Joystick
+        const joystick = nipplejs.create({
+            zone: document.getElementById('joystick-container'),
+            mode: 'static',
+            position: { left: '50%', top: '50%' },
+            color: 'yellow',
+            size: 120
+        });
+
+        // Konversi tarikan analog menjadi tombol arah desktop (W, A, S, D)
+        joystick.on('move', function (evt, data) {
+            if (!data.direction) return;
+            
+            const angle = data.angle.degree;
+            let newKeys = { w: false, a: false, s: false, d: false };
+
+            // Deteksi sudut putaran analog 360 derajat
+            if (angle >= 45 && angle < 135) newKeys.w = true;      // Atas (Maju)
+            if (angle >= 135 && angle < 225) newKeys.a = true;     // Kiri
+            if (angle >= 225 && angle < 315) newKeys.s = true;     // Bawah (Mundur)
+            if (angle < 45 || angle >= 315) newKeys.d = true;      // Kanan
+
+            // Eksekusi perubahan tombol secara mulus
+            for (let key in newKeys) {
+                if (newKeys[key] && !activeKeys[key]) {
+                    triggerKey(key, 'keydown');
+                    activeKeys[key] = true;
+                } else if (!newKeys[key] && activeKeys[key]) {
+                    triggerKey(key, 'keyup');
+                    activeKeys[key] = false;
+                }
+            }
+        });
+
+        // Ketika analog joystick dilepas kembali ke tengah
+        joystick.on('end', function () {
+            for (let key in activeKeys) {
+                if (activeKeys[key]) {
+                    triggerKey(key, 'keyup');
+                    activeKeys[key] = false;
+                }
+            }
+        });
+
+        // Kontrol Tombol Aksi Kanan (Lompat & Masuk Mobil)
+        document.querySelectorAll('.btn-action').forEach(btn => {
+            const key = btn.getAttribute('data-key');
+            btn.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                triggerKey(key, 'keydown');
+            });
+            btn.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                triggerKey(key, 'keyup');
+            });
+        });
+    </script>
+</body>
+</html>
